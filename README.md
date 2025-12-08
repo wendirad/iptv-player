@@ -1,48 +1,29 @@
-# IPTV Player React SPA
+# IPTV Player — watch IPTV in your browser 🎬📺
 
-A modern, production-ready IPTV Web Player built with React and Material-UI. Supports M3U/M3U8 playlist loading, adaptive HLS/DASH playback, EPG timelines, channel grouping/favorites, and advanced interactive features. Designed for all devices (responsive), with a modular, scalable codebase ready for future enhancements (DRM, ads, recording, analytics, etc).
+IPTV Player is a minimal, modern single‑page app for watching live TV streams in the browser. Paste a playlist or upload a file, pick a channel, and start watching — quick, clean, and mobile-friendly.
 
-## Features
-- M3U/M3U8 playlist import via URL or file
-- Adaptive HLS.js and DASH.js playback (up to 8K)
-- Video.js player controls (quality, speed, PiP, full/mini/theater mode)
-- Channel grouping, search & favorites
-- EPG timeline integration
-- Multi-audio, subtitles/CC (WebVTT, TTML, 608/708, etc)
-- Xtream Codes and Stalker API (extendable)
-- Favorites & last-channel memory
-- Modern, responsive Material-UI design
+Why it exists
+- Fast way to watch IPTV without installing native apps ⚡
+- Simple playlist + EPG experience — browse, search, favorite, resume 🔎⭐
+- Designed for everyday viewers who just want to watch TV, not deal with settings 🎯
 
-## Planned/Extendable
-- Chromecast, AirPlay, catch-up/record, DRM, custom themes, remote/PWA, ads, and more!
+What you get
+- Load an M3U/M3U8 playlist (URL or file)
+- Channel list with search, groups and favorites
+- EPG timeline to see what's on now and next
+- Remember last watched channel and simple playback controls
+- Smooth experience on desktop and mobile (including PiP/mini player)
 
-## Getting Started
-
-### Prerequisites
-- Node.js (v18+ recommended)
-- npm (v9+ recommended)
-
-### Installation
+Quick start
 ```bash
+# install
 npm install
-```
 
-### Running The App
-```bash
+# run locally
 npm start
-```
-The app will launch at http://localhost:3000.
 
-### Building For Production
-```bash
+# build
 npm run build
 ```
 
-## Folder Structure
-See the codebase for `/src/components` (player, playlist, channel list, EPG, etc), `/src/context` for state, `/src/utils` for parsers.
-
-## Contribution & License
-PRs/discussion welcome—the project is MIT licensed.
-
-## Roadmap
-See the Issues/Project boards for advanced features: DVR/recording, cast, DRM, ads, analytics...
+License: MIT
