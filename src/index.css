@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global baseline to ensure Tailwind is visibly applied */
+body {
+  @apply bg-[#050b14] text-white antialiased min-h-screen;
+}
+
+/* Hide scrollbars for the horizontal channel rail */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
