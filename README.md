@@ -64,7 +64,7 @@
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone git@github.com:wendirad/iptv-player.git
 cd iptv-player
 
 # Install dependencies
@@ -248,6 +248,6 @@ This project is licensed under the **MIT License** - see the LICENSE file for de
 
 **Made with ❤️ for IPTV enthusiasts**
 
-[Report Bug](https://github.com/yourusername/iptv-player/issues) • [Request Feature](https://github.com/yourusername/iptv-player/issues) • [Contribute](https://github.com/yourusername/iptv-player/pulls)
+[Report Bug](https://github.com/wendirad/iptv-player/issues) • [Request Feature](https://github.com/wendirad/iptv-player/issues) • [Contribute](https://github.com/wendirad/iptv-player/pulls)
 
 </div>
