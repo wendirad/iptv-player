@@ -100,6 +100,15 @@ export default function App() {
   const [manualUrl, setManualUrl] = React.useState("");
   const [groupSearch, setGroupSearch] = React.useState("");
   const [showDisclaimer, setShowDisclaimer] = React.useState(true);
+  const [volume, setVolume] = React.useState(() => {
+    try {
+      const stored = localStorage.getItem("iptv-player:volume");
+      return stored ? parseFloat(stored) : 1.0;
+    } catch {
+      return 1.0;
+    }
+  });
+  const [isMuted, setIsMuted] = React.useState(false);
   const formatTime = (t = 0) => {
     if (!t || Number.isNaN(t) || !isFinite(t)) return "0:00";
     const mins = Math.floor(t / 60);
@@ -365,6 +374,13 @@ export default function App() {
       }
     };
   }, [currentChannel, autoplay]);
+
+  React.useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = volume;
+    video.muted = isMuted;
+  }, [volume, isMuted]);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -804,7 +820,7 @@ export default function App() {
             autoPlay
             playsInline
             controls={false}
-        muted={true}
+            muted={isMuted}
         onClick={() => {
           if (streamLoading) return;
           setPlaying((p) => !p);
@@ -922,10 +938,10 @@ export default function App() {
               <polyline points="9 18 15 12 9 6" />
             </svg>
             </button>
-          <div className="flex-1 px-2 flex items-center gap-2">
+          <div className="flex-1 px-2 flex items-center gap-2 min-w-0">
             <div className="relative w-full h-2 rounded-full bg-white/10 overflow-hidden border border-white/10">
               <div
-                className="absolute top-0 left-0 h-full bg-cyan-500/30"
+                className="absolute top-0 left-0 h-full bg-cyan-500/40 z-0"
                 style={{
                   width:
                     progress.duration && progress.buffered
@@ -934,7 +950,7 @@ export default function App() {
                 }}
               />
               <div
-                className="absolute top-0 left-0 h-full bg-cyan-400"
+                className="absolute top-0 left-0 h-full bg-cyan-400 z-10"
                 style={{
                   width:
                     progress.duration && progress.time
@@ -943,7 +959,7 @@ export default function App() {
                 }}
               />
             </div>
-            <div className="text-[10px] text-white/70 whitespace-nowrap">
+            <div className="text-[10px] text-white/70 whitespace-nowrap shrink-0">
               {formatTime(progress.time)} / {formatTime(progress.duration || 0)}
             </div>
           </div>
@@ -953,7 +969,7 @@ export default function App() {
               navigator.clipboard?.writeText(currentChannel.url).catch(() => {});
               setStatus("Stream link copied");
             }}
-            className="h-10 w-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center hover:border-cyan-300/60"
+            className="h-10 w-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center hover:border-cyan-300/60 shrink-0"
             title={currentChannel?.url || "No channel selected"}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -961,9 +977,62 @@ export default function App() {
               <path d="M14 11a5 5 0 0 0-7.54-.54l-2.83 2.83a5 5 0 0 0 7.07 7.07l1.42-1.41" />
             </svg>
           </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => {
+                if (isMuted) {
+                  setIsMuted(false);
+                } else if (volume > 0) {
+                  setIsMuted(true);
+                } else {
+                  setVolume(0.5);
+                  setIsMuted(false);
+                }
+              }}
+              className="h-10 w-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center hover:border-cyan-300/60 shrink-0"
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted || volume === 0 ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </svg>
+              ) : volume < 0.5 ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                </svg>
+              )}
+            </button>
+            <div className="flex items-center w-14">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={(e) => {
+                  const newVolume = parseFloat(e.target.value);
+                  setVolume(newVolume);
+                  setIsMuted(newVolume === 0);
+                  localStorage.setItem("iptv-player:volume", newVolume.toString());
+                }}
+                className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-400"
+                style={{
+                  background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.1) ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.1) 100%)`
+                }}
+                title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
+              />
+            </div>
+          </div>
           <button
             onClick={toggleFullscreen}
-            className="h-10 w-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center hover:border-cyan-300/60 ml-1"
+            className="h-10 w-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center hover:border-cyan-300/60 shrink-0"
             title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -973,7 +1042,6 @@ export default function App() {
               <path d="M20 15v4h-4" />
             </svg>
           </button>
-          <div className="ml-auto" />
         </div>
       </div>
     </div>
