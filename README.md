@@ -8,6 +8,8 @@
 [![React](https://img.shields.io/badge/React-19.2-blue.svg)](https://reactjs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8.svg)](https://tailwindcss.com/)
 
+[![LIVE](https://img.shields.io/badge/LIVE-ONLINE-brightgreen?style=for-the-badge&logo=livestream&logoColor=white)](https://iptv-player.wendirad.com/)
+
 *Load your playlists, browse channels, and start watching—all in your browser*
 
 [Quick Start](#-quick-start) • [Features](#-features) • [Usage](#-how-to-use) • [FAQ](#-faq)
