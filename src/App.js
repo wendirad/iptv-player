@@ -8,6 +8,7 @@ const SETTINGS_KEY = "iptv-player:settings";
 const PLAYLISTS_KEY = "iptv-player-playlists";
 const EXTRAS_KEY = "iptv-player-extras";
 const LAST_CHANNEL_KEY = "iptv-player-last-channel";
+const FAVORITES_KEY = "iptv-player-favorites";
 const MAX_HISTORY = 10;
 const DEFAULT_PLAYLIST_URL = "https://iptv-org.github.io/iptv/index.m3u";
 const FALLBACK_LOGO = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop stop-color='%2323b9ff' offset='0%'/><stop stop-color='%235a38ff' offset='100%'/></linearGradient></defs><rect width='96' height='96' rx='18' fill='%23142030'/><rect x='8' y='8' width='80' height='80' rx='16' fill='url(%23g)' opacity='0.28'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='26' fill='%23e8f7ff' font-weight='700'>TV</text></svg>`;
@@ -100,6 +101,15 @@ export default function App() {
   const [manualUrl, setManualUrl] = React.useState("");
   const [groupSearch, setGroupSearch] = React.useState("");
   const [showDisclaimer, setShowDisclaimer] = React.useState(true);
+  const [favorites, setFavorites] = React.useState(() => {
+    try {
+      const stored = localStorage.getItem(FAVORITES_KEY);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [showFavoritesOnly, setShowFavoritesOnly] = React.useState(false);
   const [volume, setVolume] = React.useState(() => {
     try {
       const stored = localStorage.getItem("iptv-player:volume");
@@ -117,6 +127,32 @@ export default function App() {
       .padStart(2, "0");
     return `${mins}:${secs}`;
   };
+
+  const getChannelKey = React.useCallback((ch) => {
+    return `${ch.url || ""}-${ch.index || ""}`;
+  }, []);
+
+  const isFavorite = React.useCallback((ch) => {
+    return favorites.has(getChannelKey(ch));
+  }, [favorites, getChannelKey]);
+
+  const toggleFavorite = React.useCallback((ch, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const key = getChannelKey(ch);
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(next)));
+      return next;
+    });
+  }, [getChannelKey]);
 
   const upsertPlaylistMeta = React.useCallback((url, name) => {
     if (!url) return;
@@ -504,6 +540,9 @@ export default function App() {
 
   const filteredChannels = React.useMemo(() => {
     let list = channels;
+    if (showFavoritesOnly) {
+      list = list.filter((ch) => favorites.has(getChannelKey(ch)));
+    }
     if (selectedGroups.length) {
       const set = new Set(selectedGroups);
       list = list.filter((ch) => set.has(ch.group));
@@ -513,11 +552,11 @@ export default function App() {
       list = list.filter((ch) => (ch.name || "").toLowerCase().includes(term));
     }
     return list;
-  }, [channels, selectedGroups, search]);
+  }, [channels, selectedGroups, search, showFavoritesOnly, favorites, getChannelKey]);
 
   React.useEffect(() => {
     setPage(1);
-  }, [search, selectedGroups, channels.length]);
+  }, [search, selectedGroups, channels.length, showFavoritesOnly]);
 
   React.useEffect(() => {
     setPage((p) => {
@@ -562,65 +601,110 @@ export default function App() {
 
   const renderChannelCard = (ch, compact = false) => {
     const active = currentChannel && ch.url === currentChannel.url && ch.index === currentChannel.index;
+    const isFav = isFavorite(ch);
     if (showIconsOnly) {
       return (
-        <button
+        <div
           key={`${ch.index}-${ch.url}`}
-          onClick={() => handleSelectChannel(ch)}
-          className={`relative overflow-hidden rounded-xl bg-white/5 border border-white/10 p-2 flex flex-col items-center justify-center hover:border-cyan-300/50 transition-colors min-w-[72px] ${
-            active ? "ring-2 ring-cyan-300/70" : ""
-          }`}
-          title={`${ch.name || "Channel"} • ${ch.group || "Uncategorized"}`}
+          className="relative"
         >
-          <div className="h-12 w-12 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center overflow-hidden">
-            <img
-              src={ch.logo || FALLBACK_LOGO}
-              alt={ch.name || "Channel"}
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                if (e.target.dataset.fallback) return;
-                e.target.dataset.fallback = "1";
-                e.target.src = FALLBACK_LOGO;
-              }}
-            />
-          </div>
-          <div className="mt-1 text-[11px] text-white/80 truncate max-w-[90px] text-center leading-tight">
-            {ch.name?.trim() || "Channel"}
-          </div>
-        </button>
+          <button
+            onClick={() => handleSelectChannel(ch)}
+            className={`relative overflow-hidden rounded-xl bg-white/5 border border-white/10 p-2 flex flex-col items-center justify-center hover:border-cyan-300/50 transition-colors min-w-[72px] w-full ${
+              active ? "ring-2 ring-cyan-300/70" : ""
+            }`}
+            title={`${ch.name || "Channel"} • ${ch.group || "Uncategorized"}`}
+          >
+            <div className="h-12 w-12 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center overflow-hidden">
+              <img
+                src={ch.logo || FALLBACK_LOGO}
+                alt={ch.name || "Channel"}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  if (e.target.dataset.fallback) return;
+                  e.target.dataset.fallback = "1";
+                  e.target.src = FALLBACK_LOGO;
+                }}
+              />
+            </div>
+            <div className="mt-1 text-[11px] text-white/80 truncate max-w-[90px] text-center leading-tight">
+              {ch.name?.trim() || "Channel"}
+            </div>
+          </button>
+          <button
+            onClick={(e) => toggleFavorite(ch, e)}
+            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/80 transition-colors z-10"
+            title={isFav ? "Remove from favorites" : "Add to favorites"}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill={isFav ? "#ef4444" : "none"}
+              stroke={isFav ? "#ef4444" : "white"}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </button>
+        </div>
       );
     }
     return (
-      <button
+      <div
         key={`${ch.index}-${ch.url}`}
-        onClick={() => handleSelectChannel(ch)}
-        className={`relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-300/50 transition-all text-left ${
-          active ? "ring-2 ring-cyan-300/70 shadow-[0_10px_30px_-18px_rgba(0,255,255,0.4)]" : "shadow-[0_8px_24px_-18px_rgba(0,0,0,0.6)]"
-        } ${compact ? "w-full" : ""}`}
+        className="relative"
       >
-        <div className="flex gap-3 p-3 items-center">
-          <div className="h-12 w-12 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              src={ch.logo || FALLBACK_LOGO}
-              alt={ch.name || "Channel"}
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                if (e.target.dataset.fallback) return;
-                e.target.dataset.fallback = "1";
-                e.target.src = FALLBACK_LOGO;
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="font-semibold leading-tight truncate text-white">
-              {ch.name?.trim() || "Channel"}
+        <button
+          onClick={() => handleSelectChannel(ch)}
+          className={`relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-300/50 transition-all text-left w-full ${
+            active ? "ring-2 ring-cyan-300/70 shadow-[0_10px_30px_-18px_rgba(0,255,255,0.4)]" : "shadow-[0_8px_24px_-18px_rgba(0,0,0,0.6)]"
+          } ${compact ? "w-full" : ""}`}
+        >
+          <div className="flex gap-3 p-3 items-center">
+            <div className="h-12 w-12 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+              <img
+                src={ch.logo || FALLBACK_LOGO}
+                alt={ch.name || "Channel"}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  if (e.target.dataset.fallback) return;
+                  e.target.dataset.fallback = "1";
+                  e.target.src = FALLBACK_LOGO;
+                }}
+              />
             </div>
-            <div className="text-xs text-cyan-100/80 truncate">
-              {ch.group?.trim() || "Uncategorized"}
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="font-semibold leading-tight truncate text-white">
+                {ch.name?.trim() || "Channel"}
+              </div>
+              <div className="text-xs text-cyan-100/80 truncate">
+                {ch.group?.trim() || "Uncategorized"}
+              </div>
             </div>
           </div>
-        </div>
-      </button>
+        </button>
+        <button
+          onClick={(e) => toggleFavorite(ch, e)}
+          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/80 transition-colors z-10"
+          title={isFav ? "Remove from favorites" : "Add to favorites"}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill={isFav ? "#ef4444" : "none"}
+            stroke={isFav ? "#ef4444" : "white"}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+        </button>
+      </div>
     );
   };
 
@@ -1312,7 +1396,32 @@ export default function App() {
               {sidebarVisible && infoPanel}
               <div className="bg-white/5 border border-white/10 rounded-3xl p-3 backdrop-blur-lg shadow-[0_18px_50px_-35px_rgba(0,0,0,0.8)] max-h-[60vh] overflow-y-auto">
                 <div className="flex items-center justify-between px-1 mb-2">
-                  <div className="text-xs uppercase tracking-[0.3em] text-white/60">Channels</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/60">Channels</div>
+                    <button
+                      onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+                        showFavoritesOnly
+                          ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-200"
+                          : "bg-white/5 border-white/10 text-white/60 hover:border-cyan-300/50"
+                      }`}
+                      title={showFavoritesOnly ? "Show all channels" : "Show favorites only"}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill={showFavoritesOnly ? "#ef4444" : "none"}
+                        stroke={showFavoritesOnly ? "#ef4444" : "currentColor"}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                      <span className="text-[10px] font-medium">Favorites</span>
+                    </button>
+                  </div>
                   <div className="flex items-center gap-2 text-[11px] text-white/60">
                     <span>{filteredChannels.length} available</span>
                     <span className="text-white/30">|</span>
@@ -1380,11 +1489,36 @@ export default function App() {
             </section>
 
             <section className="flex flex-col gap-3">
-          <div className="flex items-center gap-3 px-1">
-            <div className="h-10 w-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-xs text-white/70">
-              ▶
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-xs text-white/70">
+                ▶
+              </div>
+              <div className="uppercase text-[12px] tracking-[0.35em] text-slate-200/60">Channels</div>
             </div>
-            <div className="uppercase text-[12px] tracking-[0.35em] text-slate-200/60">Channels</div>
+            <button
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+                showFavoritesOnly
+                  ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-200"
+                  : "bg-white/5 border-white/10 text-white/70 hover:border-cyan-300/50"
+              }`}
+              title={showFavoritesOnly ? "Show all channels" : "Show favorites only"}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill={showFavoritesOnly ? "#ef4444" : "none"}
+                stroke={showFavoritesOnly ? "#ef4444" : "currentColor"}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              <span className="text-[11px] font-medium">Favorites</span>
+            </button>
           </div>
               {!filteredChannels.length ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
